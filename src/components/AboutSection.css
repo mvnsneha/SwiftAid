@@ -27,14 +27,14 @@
 .about-subtitle {
   font-size: 18px;
   opacity: 0.8;
-  margin-bottom: 70px;
+  margin-bottom: 40px;
 }
 
 /* GRID */
 .about-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 35px;
+  gap: 40px;
 }
 
 /* CARD DESIGN */

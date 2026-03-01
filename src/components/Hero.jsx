@@ -16,8 +16,7 @@ function Hero() {
         <h1>Responding Faster. Saving Lives.</h1>
 
         <p className="hero-subtext">
-          SwiftAid is an AI-driven disaster response system that autonomously
-          generates and adapts rescue plans in real time using reinforcement learning.
+          REAL-TIME STRATEGIC BRAIN FOR EMERGENCY COMMANDERS.
         </p>
 
         <button

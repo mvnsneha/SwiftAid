@@ -1,6 +1,6 @@
 .weather-container {
   min-height: 100vh;
-  padding: 80px 8%;
+  padding: 30px 8%;
   background:  rgb(221, 221, 230); /* SAME dark blue as About */
   color: rgb(30, 5, 79);
   font-family: "Poppins", sans-serif;
@@ -117,4 +117,66 @@
   text-align: center;
   color: #ff6b6b;
   font-size: 18px;
+}
+.weather-icon {
+  width: 80px;
+}
+
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-top: 25px;
+}
+
+.metric {
+  background:#060933;
+  padding: 5px;
+  color:rgb(221, 221, 230);
+  border-radius: 20px;
+  text-align: center;
+}
+
+.status-badge {
+  display: inline-block;
+  margin-top: 10px;
+  background: rgb(221, 221, 230);
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+/* ===== HOURLY ROW ===== */
+.hourly-row {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  flex-wrap: wrap;
+  margin: 25px 0 40px;
+}
+
+/* ===== HOURLY CARDS SAME AS FORECAST ===== */
+.hour-card {
+  background: rgba(17, 7, 52, 0.05);
+  border-radius: 18px;
+  padding: 20px;
+  width: 120px;
+  font-weight: bold;
+  text-align: center;
+  transition: 0.3s ease;
+  border: 1px solid rgba(22, 13, 64, 0.08);
+}
+
+.hour-card:hover {
+  transform: translateY(-8px);
+  background: rgba(15, 5, 33, 0.1);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+}
+
+.hour-card img {
+  width: 45px;
+  margin: 8px 0;
+}
+
+.hour-card p {
+  margin: 4px 0;
+  font-size: 13px;
 }
