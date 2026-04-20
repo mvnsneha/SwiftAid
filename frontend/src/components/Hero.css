@@ -1,0 +1,78 @@
+.hero {
+  height: 100vh;
+  width: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  position: relative;
+  overflow: hidden;
+}
+
+/* Dark Overlay */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 15, 35, 0.75);
+  z-index: 1;
+}
+
+/* Content Container */
+.hero-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  max-width: 1200px;
+  padding: 0 20px;
+  color: white;
+}
+
+/* Small Tag */
+.hero-tag {
+  letter-spacing: 3px;
+  font-size: 14px;
+  margin-bottom: 20px;
+  opacity: 0.8;
+}
+
+/* MAIN HEADING */
+.hero h1 {
+  font-size: 70px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 25px;
+  white-space: nowrap;  /* Forces single line */
+}
+
+/* Subtext */
+.hero-subtext {
+  font-size: 14px;
+  max-width: 750px;
+  margin: 0 auto 40px auto;
+  line-height: 1.6;
+  opacity: 0.9;
+  letter-spacing: 3px;
+}
+
+/* Button */
+.hero-btn {
+  padding: 14px 40px;
+  font-size: 18px;
+  font-weight: 600;
+  border: none;
+  border-radius: 40px;
+  background: linear-gradient(90deg, #6ee7ff, #3bc9db);
+  color: #001a2c;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.hero-btn:hover {
+  transform: translateY(-3px);
+  opacity: 0.9;
+}
