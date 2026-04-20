@@ -65,9 +65,11 @@ Minimal Flask backend for the real-time disaster environment.
 """
 
 import threading
+import feedparser
 from flask import Flask, jsonify
 from flask_cors import CORS   # ✅ NEW — allows React to call the API
-
+from shapely.geometry import shape
+from resource_manager import RESOURCE_POINTS
 from environment import HyderabadDisasterEnvironment
 
 # ---------------------------------------------------------------------------
@@ -79,6 +81,33 @@ environment = HyderabadDisasterEnvironment(seed=42)
 # ---------------------------------------------------------------------------
 # Run simulation in a background thread
 # ---------------------------------------------------------------------------
+
+def extract_centroid(geometry):
+    try:
+        geom = shape(geometry)
+
+        # ✅ FIX invalid polygons (VERY IMPORTANT)
+        if not geom.is_valid:
+            geom = geom.buffer(0)
+
+        c = geom.centroid
+        return c.y, c.x   # lat, lon
+
+    except Exception as e:
+        print("⚠️ Centroid error:", e)
+        return None, None
+
+print("📍 Assigning real coordinates to wards...")
+
+for ward in environment.get_wards():
+
+    lat, lon = extract_centroid(ward["geometry"])
+
+    if lat is not None and lon is not None:
+        ward["lat"] = lat
+        ward["lon"] = lon
+    else:
+        print(f"⚠️ Failed centroid for {ward['name']}")
 
 def run_simulation_in_background():
     """Runs the environment simulation loop forever."""
@@ -135,6 +164,12 @@ def get_stats():
         "green_zones": green,
         "disaster": environment.current_disaster
     }
+@app.route("/api/hubs")
+def get_hubs():
+    return jsonify(RESOURCE_POINTS), 200
+
+
+
 # ---------------------------------------------------------------------------
 # Run the app
 # ---------------------------------------------------------------------------

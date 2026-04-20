@@ -8,6 +8,7 @@ No frontend, no RL agent, no Flask. Run as: python environment.py
 """
 
 from __future__ import annotations
+from resource_manager import allocate_nearest
 
 import json
 import math
@@ -30,7 +31,13 @@ except ImportError:
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-
+DISASTER_TEAM_MAP = {
+    "flood": "DRF",
+    "fire": "FIRE",
+    "earthquake": "NDRF",
+    "crowd": "SDRF",
+    "cyclone_effect": "DRF"
+}
 # Hazard types used across wards
 HAZARDS = ("flood", "fire", "earthquake", "cyclone_effect", "crowd")
 
@@ -52,10 +59,10 @@ CRITICAL_INFRA_TYPES = ("hospital", "metro", "power_station")
 # Total rescue teams available in Hyderabad (approximate realistic values)
 
 RESCUE_TEAMS_AVAILABLE = {
-    "NDRF": 5,      # National Disaster Response Force
-    "SDRF": 10,     # State Disaster Response Force
-    "DRF": 51,      # GHMC Disaster Response Force
-    "FIRE": 25      # Fire & Emergency teams
+    "NDRF": 3,      # National Disaster Response Force
+    "SDRF": 5,     # State Disaster Response Force
+    "DRF": 10,      # GHMC Disaster Response Force
+    "FIRE": 1      # Fire & Emergency teams
 }
 
 
@@ -353,7 +360,9 @@ class HyderabadDisasterEnvironment:
             "active_disaster": active_disaster,
             "historical_risk": ward_obj.historical_risk,
             "team_assigned": False,
-            "prev_severity": severity
+            "prev_severity": severity,
+            "partial": False,
+            "split_count": 0
         })
     def show_available_teams(self):
 
@@ -409,6 +418,29 @@ class HyderabadDisasterEnvironment:
                 self.available_teams["DRF"] -= 1
                 ward["team_assigned"] = True
                 print(f"🚑 DRF team sent to {ward['name']} (Cyclone Effect Response)")
+    def required_teams(ward):
+
+        population = ward.get("population", 50000)
+        severity = ward.get("severity", 1)
+
+        # population factor (per 50k people)
+        pop_factor = population // 50000
+
+        # severity weight
+        if severity >= 5:
+            sev_factor = 3
+        elif severity >= 4:
+            sev_factor = 2
+        elif severity >= 2:
+            sev_factor = 1
+        else:
+            sev_factor = 0
+
+        # total teams needed
+        teams = pop_factor + sev_factor
+
+        # limit (important!)
+        return min(5, teams)
     def check_rescue_completion(self):
 
         for ward in self.wards:
@@ -418,7 +450,8 @@ class HyderabadDisasterEnvironment:
                 disaster = ward.get("active_disaster")
 
                 ward["team_assigned"] = False
-
+                ward["partial"] = False
+                ward["split_count"] = 0
                 if disaster == "flood":
                     self.available_teams["DRF"] += 1
 
@@ -447,7 +480,6 @@ class HyderabadDisasterEnvironment:
                 prev_sev = ward["severity"]
 
                 state = self.agent.get_state(ward)
-
                 action = self.agent.choose_action(state)
 
                 ward_before = ward.copy()
@@ -458,36 +490,83 @@ class HyderabadDisasterEnvironment:
 
                 if prev_sev < 4 and curr_sev >= 4:
 
-                    decision_entry = {
-                        "ward": ward["name"],
-                        "severity": curr_sev,
-                        "decision": ""
-                        }
-
                     if action == 1:
 
-                        message = f"🤖 RL dispatching rescue → {ward['name']}"
-                        print(message)
+                        if not ward.get("team_assigned"):
 
-                        self.allocate_rescue_team(ward)
+                            disaster = ward.get("active_disaster")
+
+                            # -------------------------
+                            # 🚑 NORMAL DISPATCH
+                            # -------------------------
+                            team_type = DISASTER_TEAM_MAP.get(disaster)
+                            if self.available_teams.get(team_type, 0) > 0:
+
+                                print(f"🤖 RL dispatching rescue → {ward['name']}")
+
+                                allocate_nearest(self, ward)
+
+                            # -------------------------
+                            # ⚡ SPLIT (ONLY WHEN 0)
+                            # -------------------------
+                            else:
+
+                                split_done = False
+
+                                for w in self.wards:
+
+                                    if w.get("team_assigned"):
+
+                                        splits = w.get("split_count", 0)
+
+                                        # ✅ LIMIT SPLITS
+                                        if splits < 2:
+
+                                            print(f"⚡ Splitting team: {w['name']} → {ward['name']}")
+
+                                            # mark partial
+                                            w["partial"] = True
+                                            ward["partial"] = True
+
+                                            # update split count
+                                            w["split_count"] = splits + 1
+                                            ward["split_count"] = 1
+
+                                            # assign team (no count reduction)
+                                            ward["team_assigned"] = True
+                                            ward["team_type"] = w.get("team_type")
+                                            ward["team_from"] = w.get("team_from")
+
+                                            split_done = True
+                                            break
+
+                                if not split_done:
+                                    print(f"❌ No teams & no split possible → {ward['name']}")
+
+                        else:
+                            print(f"⚠️ Team already assigned → {ward['name']}")
 
                     else:
+                        print(f"🤖 RL decided to wait → {ward['name']}")
 
-                        message = f"🤖 RL decided to wait → {ward['name']}"
-                        print(message)
-
-                    # store the decision for frontend
+                    # -------------------------
+                    # 📊 STORE DECISIONS
+                    # -------------------------
                     self.decisions.append({
                         "ward": ward["name"],
                         "severity": curr_sev,
-                        "message": message
+                        "action": "dispatch" if action == 1 else "wait",
+                        "team": ward.get("team_type"),
+                        "from": ward.get("team_from"),
+                        "partial": ward.get("partial", False)
                     })
 
-                    # keep last 20 decisions
                     self.decisions = self.decisions[-20:]
 
+                # -------------------------
+                # 🎯 RL LEARNING
+                # -------------------------
                 reward = self.agent.calculate_reward(ward_before, ward)
-
                 next_state = self.agent.get_state(ward)
 
                 self.agent.update_q(state, action, reward, next_state)
@@ -592,6 +671,11 @@ class HyderabadDisasterEnvironment:
         # -------------------------
         if new_severity <= 1:
             ward["active_disaster"] = None
+        if ward.get("partial"):
+
+            # slower improvement
+            if ward["severity"] > 0:
+                ward["severity"] = max(0, ward["severity"] - 0.5)
 
     def get_current_state(self) -> list[dict[str, Any]]:
             """
